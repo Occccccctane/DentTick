@@ -1,0 +1,9 @@
+齿刻
+Dentick
+架构分层：
+- Handler：HTTP交互
+- Service：业务实现
+- Repository：存储交互聚合
+- Dao：数据库交互
+- Cache：缓存交互
+- Config：配置文件
