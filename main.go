@@ -1,10 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	s := "gopher"
-	fmt.Printf("Hello and welcome, %s!\n", s)
+	server := gin.Default()
+	err := server.Run(":8080")
+	if err != nil {
+		panic(err)
+	}
 }
