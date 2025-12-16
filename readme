@@ -7,3 +7,5 @@ Dentick
 - Dao：数据库交互
 - Cache：缓存交互
 - Config：配置文件
+- Domain:业务抽象
+- IOC：依赖注入
