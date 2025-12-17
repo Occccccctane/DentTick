@@ -11,8 +11,17 @@ import (
 
 func InitWireServer() *gin.Engine {
 	wire.Build(
+		userSet,
+		//Ioc
 		Ioc.InitWebServer,
 		Ioc.InitMiddlerWares,
 	)
 	return gin.Default()
 }
+
+var userSet = wire.NewSet(
+	//Service
+	Service.NewUserService,
+	//Handler
+	Handler.NewUserHandler,
+)

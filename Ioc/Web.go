@@ -1,13 +1,21 @@
 package Ioc
 
-import "github.com/gin-gonic/gin"
+import (
+	"DentTick/Handler"
+	"DentTick/Handler/MiddleWare"
 
-func InitWebServer(middlewares []gin.HandlerFunc) *gin.Engine {
+	"github.com/gin-gonic/gin"
+)
+
+func InitWebServer(middlewares []gin.HandlerFunc, userHandler *Handler.UserHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(middlewares...)
+	userHandler.RegisterRoute(server)
 	return server
 }
 
 func InitMiddlerWares() []gin.HandlerFunc {
-	return []gin.HandlerFunc{}
+	return []gin.HandlerFunc{
+		(&MiddleWare.CrossDomain{}).CrossDomainHandler(),
+	}
 }
