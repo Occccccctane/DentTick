@@ -1,0 +1,12 @@
+redis:
+  addr: "localhost:6379"
+
+db:
+  #    mysql-local
+  dsn: "root:aaa@tcp(localhost:3306)/denttick"
+
+regexp:
+  passwordRegex: ""
+  phoneRegex: "^1[3-9]\\d{9}$"
+
+log:

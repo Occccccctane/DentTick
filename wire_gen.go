@@ -7,14 +7,29 @@
 package main
 
 import (
+	"DentTick/Handler"
 	"DentTick/Ioc"
+	"DentTick/Repository"
+	"DentTick/Repository/Dao"
+	"DentTick/Service"
 	"github.com/gin-gonic/gin"
+	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
 func InitWireServer() *gin.Engine {
 	v := Ioc.InitMiddlerWares()
-	engine := Ioc.InitWebServer(v)
+	logger := Ioc.InitLogger()
+	db := Ioc.InitDB(logger)
+	userDao := Dao.NewUserDao(db)
+	userRepository := Repository.NewUserRepository(userDao)
+	userService := Service.NewUserService(userRepository)
+	userHandler := Handler.NewUserHandler(userService)
+	engine := Ioc.InitWebServer(v, userHandler)
 	return engine
 }
+
+// wire.go:
+
+var userSet = wire.NewSet(Dao.NewUserDao, Repository.NewUserRepository, Service.NewUserService, Handler.NewUserHandler)
