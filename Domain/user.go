@@ -2,6 +2,8 @@ package Domain
 
 type User struct {
 	Id       int64
+	Avatar   string // 头像存储地址
+	NickName string
 	Name     string
 	Info     string
 	Password string
