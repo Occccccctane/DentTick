@@ -40,7 +40,7 @@ func (dao *UserGormDao) Insert(ctx context.Context, u User) error {
 	return err
 }
 
-func NewUserDao(db *gorm.DB) UserDao {
+func NewUserGormDao(db *gorm.DB) UserDao {
 	return &UserGormDao{
 		db: db,
 	}
