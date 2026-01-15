@@ -1,24 +1,30 @@
 package Handler
 
 import (
+	"DentTick/Constant"
 	"DentTick/Domain"
+	ijwt "DentTick/Handler/Jwt"
+	"DentTick/Package/logger"
 	"DentTick/Service"
 	"errors"
 	"net/http"
 
 	regexp "github.com/dlclark/regexp2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/viper"
 
 	"github.com/gin-gonic/gin"
 )
 
 type UserHandler struct {
+	ijwt.Handler
 	passwordRexExp *regexp.Regexp
 	phoneRexExp    *regexp.Regexp
 	svc            Service.UserService
+	l              logger.Logger
 }
 
-func NewUserHandler(svc Service.UserService) *UserHandler {
+func NewUserHandler(svc Service.UserService, hdl ijwt.Handler, l logger.Logger) *UserHandler {
 	//读取正则
 	type Config struct {
 		passwordRegex string `yaml:"passwordRegex"`
@@ -33,11 +39,17 @@ func NewUserHandler(svc Service.UserService) *UserHandler {
 		svc:            svc,
 		passwordRexExp: regexp.MustCompile(cfg.passwordRegex, regexp.None),
 		phoneRexExp:    regexp.MustCompile(cfg.phoneRegex, regexp.None),
+		l:              l,
+		Handler:        hdl,
 	}
 }
 func (h *UserHandler) RegisterRoute(server *gin.Engine) {
 	user := server.Group("/users")
-	user.POST("", h.Signup)
+	user.POST("/signup", h.Signup)
+	user.POST("logout", h.Logout)
+
+	user.GET("/refresh_token", h.RefreshToken)
+
 }
 
 func (h *UserHandler) Signup(ctx *gin.Context) {
@@ -53,16 +65,17 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 		return
 	}
 
-	// 校验邮箱格式
-	isEmailTrue, err := h.phoneRexExp.MatchString(req.Phone)
+	// 校验手机格式
+	isPhoneTrue, err := h.phoneRexExp.MatchString(req.Phone)
 	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5,
 			Msg:  "系统错误",
 		})
+		h.l.Error("手机格式错误", logger.Error(err))
 		return
 	}
-	if !isEmailTrue {
+	if !isPhoneTrue {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 4,
 			Msg:  "手机格式错误",
@@ -117,4 +130,49 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 		})
 	}
 
+}
+
+func (h *UserHandler) RefreshToken(ctx *gin.Context) {
+	tokenStr := h.ExtractToken(ctx)
+	var rc ijwt.RefreshClaims
+	token, err := jwt.ParseWithClaims(tokenStr, &rc, func(token *jwt.Token) (interface{}, error) {
+		return Constant.RcJwtKey, nil
+	})
+	//解析失败，401,未授权
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	// jwt没承诺非法就返回错误，加入校验保底
+	if token == nil || !token.Valid {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	//校验 SSID
+	err = h.CheckSession(ctx, rc.Ssid)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	h.SetJWTToken(ctx, rc.Uid, rc.Ssid)
+	ctx.JSON(http.StatusOK, Result{
+		Code: 2,
+		Msg:  "OK",
+	})
+}
+
+func (h *UserHandler) Logout(ctx *gin.Context) {
+	err := h.ClearToken(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Code: 2,
+		Msg:  "已登出",
+	})
 }

@@ -4,6 +4,7 @@ package main
 
 import (
 	"DentTick/Handler"
+	"DentTick/Handler/Jwt"
 	"DentTick/Ioc"
 	"DentTick/Repository"
 	"DentTick/Repository/Dao"
@@ -16,21 +17,31 @@ import (
 func InitWireServer() *gin.Engine {
 	wire.Build(
 		userSet,
-		//Ioc
-		Ioc.InitDB, Ioc.InitLogger,
-		Ioc.InitWebServer,
-		Ioc.InitMiddlerWares,
+		thirdParty,
+		ServerSet,
 	)
 	return gin.Default()
 }
 
 var userSet = wire.NewSet(
 	//Dao
-	Dao.NewUserDao,
+	Dao.NewUserGormDao,
 	//Repository
 	Repository.NewUserRepository,
 	//Service
 	Service.NewUserService,
 	//Handler
 	Handler.NewUserHandler,
+	Jwt.NewRedisJWTHandler,
+)
+
+var ServerSet = wire.NewSet(
+	Ioc.InitLogger,
+	Ioc.InitWebServer,
+	Ioc.InitMiddlerWares,
+)
+
+var thirdParty = wire.NewSet(
+	Ioc.InitDB,
+	Ioc.InitRedis,
 )
