@@ -46,7 +46,9 @@ func NewUserHandler(svc Service.UserService, hdl ijwt.Handler, l logger.Logger) 
 func (h *UserHandler) RegisterRoute(server *gin.Engine) {
 	user := server.Group("/users")
 	user.POST("/signup", h.Signup)
+	user.POST("/login", h.Login)
 	user.POST("logout", h.Logout)
+	user.GET("/refresh_token", h.RefreshToken)
 
 	user.GET("/refresh_token", h.RefreshToken)
 
@@ -130,6 +132,31 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 		})
 	}
 
+}
+
+func (h *UserHandler) Login(ctx *gin.Context) {
+	type loginReq struct {
+		Phone    string `json:"phone"`
+		Password string `json:"password"`
+	}
+
+	var req loginReq
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+
+	// service: Login
+	u, err := h.svc.Login(ctx, req.Phone, req.Password)
+
+	switch {
+	case err == nil:
+		h.SetLoginToken(ctx, u.Id)
+		ctx.JSON(http.StatusOK, Result{Code: 2, Msg: "登录成功"})
+	case errors.Is(err, Service.ErrInvalidUserOrPassword):
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "手机号或密码错误"})
+	default:
+		ctx.JSON(http.StatusInternalServerError, Result{Code: 5, Msg: "服务器出错"})
+	}
 }
 
 func (h *UserHandler) RefreshToken(ctx *gin.Context) {

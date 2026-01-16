@@ -15,6 +15,8 @@ var (
 
 type UserRepository interface {
 	Create(ctx context.Context, u Domain.User) error
+	FindByPhone(ctx context.Context, phone string) (Domain.User, error)
+	GetById(ctx context.Context, id int64) (Domain.User, error)
 }
 
 type CachedUserRepository struct {
@@ -24,6 +26,23 @@ type CachedUserRepository struct {
 func (repo *CachedUserRepository) Create(ctx context.Context, u Domain.User) error {
 	return repo.dao.Insert(ctx, repo.toEntity(u))
 }
+
+func (repo *CachedUserRepository) FindByPhone(ctx context.Context, phone string) (Domain.User, error) {
+	entity, err := repo.dao.SelectByPhone(ctx, phone)
+	if err != nil {
+		return Domain.User{}, err
+	}
+	return repo.toDomain(entity), nil
+}
+
+func (repo *CachedUserRepository) GetById(ctx context.Context, id int64) (Domain.User, error) {
+	entity, err := repo.dao.SelectById(ctx, id)
+	if err != nil {
+		return Domain.User{}, err
+	}
+	return repo.toDomain(entity), nil
+}
+
 func NewUserRepository(dao Dao.UserDao) UserRepository {
 	return &CachedUserRepository{
 		dao: dao,
@@ -42,5 +61,19 @@ func (repo *CachedUserRepository) toEntity(u Domain.User) Dao.User {
 			Valid:  u.Phone != "",
 		},
 		Utime: time.Now().UnixMilli(),
+	}
+}
+
+// convert Dao.User to Domain.User
+func (repo *CachedUserRepository) toDomain(entity Dao.User) Domain.User {
+	return Domain.User{
+		Id:        entity.Id,
+		Name:      entity.Name,
+		Info:      entity.Info,
+		Password:  entity.Password,
+		Identity:  entity.Identity,
+		DoctorId:  entity.DoctorId,
+		PatientId: entity.PatientId,
+		Phone:     entity.Phone.String,
 	}
 }
