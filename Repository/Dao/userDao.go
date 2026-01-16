@@ -17,6 +17,8 @@ var (
 
 type UserDao interface {
 	Insert(ctx context.Context, u User) error
+	FindById(ctx context.Context, id int64) (User, error)
+	UpdateProfile(ctx context.Context, u User) error
 }
 type UserGormDao struct {
 	db *gorm.DB
@@ -40,6 +42,23 @@ func (dao *UserGormDao) Insert(ctx context.Context, u User) error {
 	return err
 }
 
+func (dao *UserGormDao) FindById(ctx context.Context, id int64) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).First(&u, id).Error
+	return u, err
+}
+
+func (dao *UserGormDao) UpdateProfile(ctx context.Context, u User) error {
+	now := time.Now().UnixMilli()
+	return dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", u.Id).Updates(map[string]any{
+		"name":      u.Name,
+		"nick_name": u.NickName,
+		"info":      u.Info,
+		"avatar":    u.Avatar,
+		"utime":     now,
+	}).Error
+}
+
 func NewUserGormDao(db *gorm.DB) UserDao {
 	return &UserGormDao{
 		db: db,
@@ -49,6 +68,8 @@ func NewUserGormDao(db *gorm.DB) UserDao {
 // User 映射数据库用户表
 type User struct {
 	Id       int64 `gorm:"primaryKey,autoFIncrement"`
+	Avatar   string
+	NickName string
 	Name     string
 	Info     string
 	Password string

@@ -50,6 +50,110 @@ func (h *UserHandler) RegisterRoute(server *gin.Engine) {
 
 	user.GET("/refresh_token", h.RefreshToken)
 
+	profile := server.Group("/user")
+	profile.GET("/profile", h.Profile)
+	profile.POST("/edit", h.EditProfile)
+
+}
+
+func (h *UserHandler) Profile(ctx *gin.Context) {
+	uc, ok := h.extractUserClaims(ctx)
+	if !ok {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	u, err := h.svc.GetProfile(ctx, uc.Uid)
+	if err != nil {
+		switch {
+		case errors.Is(err, Service.ErrUserNotFound):
+			ctx.JSON(http.StatusOK, Result{
+				Code: 4,
+				Msg:  "user not found",
+			})
+		default:
+			ctx.JSON(http.StatusInternalServerError, Result{
+				Code: 5,
+				Msg:  "server error",
+			})
+		}
+		return
+	}
+
+	type profileResp struct {
+		Name     string `json:"name"`
+		NickName string `json:"nickname"`
+		Info     string `json:"info"`
+		Avatar   string `json:"avatar"`
+		Phone    string `json:"phone"`
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Code: 2,
+		Data: profileResp{
+			Name:     u.Name,
+			NickName: u.NickName,
+			Info:     u.Info,
+			Avatar:   u.Avatar,
+			Phone:    u.Phone,
+		},
+	})
+}
+
+func (h *UserHandler) EditProfile(ctx *gin.Context) {
+	uc, ok := h.extractUserClaims(ctx)
+	if !ok {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	type editProfileReq struct {
+		Name     string `json:"name"`
+		NickName string `json:"nickname"`
+		Info     string `json:"info"`
+		Avatar   string `json:"avatar"`
+	}
+	var req editProfileReq
+	err := ctx.Bind(&req)
+	if err != nil {
+		return
+	}
+
+	err = h.svc.EditProfile(ctx, Domain.User{
+		Id:       uc.Uid,
+		Name:     req.Name,
+		NickName: req.NickName,
+		Info:     req.Info,
+		Avatar:   req.Avatar,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "server error",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Code: 2,
+		Msg:  "OK",
+	})
+}
+
+func (h *UserHandler) extractUserClaims(ctx *gin.Context) (ijwt.UserClaims, bool) {
+	tokenStr := h.ExtractToken(ctx)
+	if tokenStr == "" {
+		return ijwt.UserClaims{}, false
+	}
+	var uc ijwt.UserClaims
+	token, err := jwt.ParseWithClaims(tokenStr, &uc, func(token *jwt.Token) (interface{}, error) {
+		return []byte(Constant.JwtKey), nil
+	})
+	if err != nil || token == nil || !token.Valid {
+		return ijwt.UserClaims{}, false
+	}
+	if err := h.CheckSession(ctx, uc.Ssid); err != nil {
+		return ijwt.UserClaims{}, false
+	}
+	return uc, true
 }
 
 func (h *UserHandler) Signup(ctx *gin.Context) {
