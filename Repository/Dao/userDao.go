@@ -17,6 +17,10 @@ var (
 
 type UserDao interface {
 	Insert(ctx context.Context, u User) error
+	// FindById 根据主键查询用户
+	FindById(ctx context.Context, id int64) (User, error)
+	// UpdateProfile 更新用户资料字段
+	UpdateProfile(ctx context.Context, u User) error
 	SelectByPhone(ctx context.Context, phone string) (User, error)
 	SelectById(ctx context.Context, id int64) (User, error)
 }
@@ -43,6 +47,23 @@ func (dao *UserGormDao) Insert(ctx context.Context, u User) error {
 	return err
 }
 
+func (dao *UserGormDao) FindById(ctx context.Context, id int64) (User, error) {
+	var u User
+	// 只按主键查一条记录
+	err := dao.db.WithContext(ctx).First(&u, id).Error
+	return u, err
+}
+
+func (dao *UserGormDao) UpdateProfile(ctx context.Context, u User) error {
+	// 只更新资料字段，避免覆盖密码等敏感字段
+	now := time.Now().UnixMilli()
+	return dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", u.Id).Updates(map[string]any{
+		"name":      u.Name,
+		"nick_name": u.NickName,
+		"info":      u.Info,
+		"avatar":    u.Avatar,
+		"utime":     now,
+	}).Error
 func (dao *UserGormDao) SelectByPhone(ctx context.Context, phone string) (User, error) {
 	var u User
 	err := dao.db.WithContext(ctx).Where("phone = ?", phone).First(&u).Error
@@ -64,6 +85,8 @@ func NewUserGormDao(db *gorm.DB) UserDao {
 // User 映射数据库用户表
 type User struct {
 	Id       int64 `gorm:"primaryKey,autoFIncrement"`
+	Avatar   string
+	NickName string
 	Name     string
 	Info     string
 	Password string
