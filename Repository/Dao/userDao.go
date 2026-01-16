@@ -21,7 +21,10 @@ type UserDao interface {
 	FindById(ctx context.Context, id int64) (User, error)
 	// UpdateProfile 更新用户资料字段
 	UpdateProfile(ctx context.Context, u User) error
+	SelectByPhone(ctx context.Context, phone string) (User, error)
+	SelectById(ctx context.Context, id int64) (User, error)
 }
+
 type UserGormDao struct {
 	db *gorm.DB
 }
@@ -61,6 +64,16 @@ func (dao *UserGormDao) UpdateProfile(ctx context.Context, u User) error {
 		"avatar":    u.Avatar,
 		"utime":     now,
 	}).Error
+func (dao *UserGormDao) SelectByPhone(ctx context.Context, phone string) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).Where("phone = ?", phone).First(&u).Error
+	return u, err
+}
+
+func (dao *UserGormDao) SelectById(ctx context.Context, id int64) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&u).Error
+	return u, err
 }
 
 func NewUserGormDao(db *gorm.DB) UserDao {
