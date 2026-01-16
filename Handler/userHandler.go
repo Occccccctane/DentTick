@@ -48,26 +48,27 @@ func (h *UserHandler) RegisterRoute(server *gin.Engine) {
 	user.POST("/signup", h.Signup)
 	user.POST("/login", h.Login)
 	user.POST("logout", h.Logout)
+	user.POST("/edit", h.EditProfile)
+	user.GET("/profile", h.Profile)
 	user.GET("/refresh_token", h.RefreshToken)
-
-	user.GET("/refresh_token", h.RefreshToken)
-
-	profile := server.Group("/user")
-	profile.GET("/profile", h.Profile)
-	profile.POST("/edit", h.EditProfile)
 
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
-	// 从 JWT 中解析用户信息
-	uc, ok := h.extractUserClaims(ctx)
+	// 从上下文中解析用户信息
+	uc, ok := ctx.Get("user")
 	if !ok {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
+	UC, ok := uc.(ijwt.UserClaims)
+	if !ok {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
 
 	// 查询用户资料
-	u, err := h.svc.GetProfile(ctx, uc.Uid)
+	u, err := h.svc.GetProfile(ctx, UC.Uid)
 	if err != nil {
 		switch {
 		case errors.Is(err, Service.ErrUserNotFound):
@@ -104,12 +105,6 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 }
 
 func (h *UserHandler) EditProfile(ctx *gin.Context) {
-	// 从 JWT 中解析用户信息
-	uc, ok := h.extractUserClaims(ctx)
-	if !ok {
-		ctx.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
 
 	type editProfileReq struct {
 		Name     string `json:"name"`
@@ -123,9 +118,21 @@ func (h *UserHandler) EditProfile(ctx *gin.Context) {
 		return
 	}
 
+	// 从上下文中解析用户信息
+	uc, ok := ctx.Get("user")
+	if !ok {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	UC, ok := uc.(ijwt.UserClaims)
+	if !ok {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	uid := UC.Uid
 	// 只允许编辑资料字段
 	err = h.svc.EditProfile(ctx, Domain.User{
-		Id:       uc.Uid,
+		Id:       uid,
 		Name:     req.Name,
 		NickName: req.NickName,
 		Info:     req.Info,
@@ -144,25 +151,6 @@ func (h *UserHandler) EditProfile(ctx *gin.Context) {
 	})
 }
 
-func (h *UserHandler) extractUserClaims(ctx *gin.Context) (ijwt.UserClaims, bool) {
-	// 复用 Authorization 中的 JWT 解析用户信息
-	tokenStr := h.ExtractToken(ctx)
-	if tokenStr == "" {
-		return ijwt.UserClaims{}, false
-	}
-	var uc ijwt.UserClaims
-	token, err := jwt.ParseWithClaims(tokenStr, &uc, func(token *jwt.Token) (interface{}, error) {
-		return []byte(Constant.JwtKey), nil
-	})
-	if err != nil || token == nil || !token.Valid {
-		return ijwt.UserClaims{}, false
-	}
-	if err := h.CheckSession(ctx, uc.Ssid); err != nil {
-		return ijwt.UserClaims{}, false
-	}
-	return uc, true
-}
-
 func (h *UserHandler) Signup(ctx *gin.Context) {
 	type signUpReq struct {
 		Phone           string `json:"phone"`
@@ -176,41 +164,7 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 		return
 	}
 
-	// 校验手机格式
-	isPhoneTrue, err := h.phoneRexExp.MatchString(req.Phone)
-	if err != nil {
-		ctx.JSON(http.StatusOK, Result{
-			Code: 5,
-			Msg:  "系统错误",
-		})
-		h.l.Error("手机格式错误", logger.Error(err))
-		return
-	}
-	if !isPhoneTrue {
-		ctx.JSON(http.StatusOK, Result{
-			Code: 4,
-			Msg:  "手机格式错误",
-		})
-		return
-	}
-
-	//校验密码
-	isPasswordTrue, err := h.passwordRexExp.MatchString(req.Password)
-	if err != nil {
-		ctx.JSON(http.StatusOK, Result{
-			Code: 5,
-			Msg:  "系统错误",
-		})
-		return
-	}
-	if !isPasswordTrue {
-		ctx.JSON(http.StatusOK, Result{
-			Code: 4,
-			Msg:  "密码格式错误，应包括大小写字母和数字，并大于8位",
-		})
-		return
-	}
-
+	h.CheckPhoneForm(ctx, req.Phone, req.Password)
 	//校验两次密码
 	if req.ConfirmPassword != req.Password {
 		ctx.JSON(http.StatusOK, Result{
@@ -240,7 +194,6 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 			Msg:  "服务器出错",
 		})
 	}
-
 }
 
 func (h *UserHandler) Login(ctx *gin.Context) {
@@ -253,7 +206,7 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 	if err := ctx.Bind(&req); err != nil {
 		return
 	}
-
+	h.CheckPhoneForm(ctx, req.Phone, req.Password)
 	// service: Login
 	u, err := h.svc.Login(ctx, req.Phone, req.Password)
 
@@ -311,4 +264,41 @@ func (h *UserHandler) Logout(ctx *gin.Context) {
 		Code: 2,
 		Msg:  "已登出",
 	})
+}
+
+func (h *UserHandler) CheckPhoneForm(ctx *gin.Context, phone, password string) {
+	// 校验手机格式
+	isPhoneTrue, err := h.phoneRexExp.MatchString(phone)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		h.l.Error("手机格式错误", logger.Error(err))
+		return
+	}
+	if !isPhoneTrue {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4,
+			Msg:  "手机格式错误",
+		})
+		return
+	}
+
+	//校验密码
+	isPasswordTrue, err := h.passwordRexExp.MatchString(password)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	if !isPasswordTrue {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4,
+			Msg:  "密码格式错误，应包括大小写字母和数字，并大于8位",
+		})
+		return
+	}
 }

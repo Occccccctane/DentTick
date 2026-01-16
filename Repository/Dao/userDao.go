@@ -64,6 +64,7 @@ func (dao *UserGormDao) UpdateProfile(ctx context.Context, u User) error {
 		"avatar":    u.Avatar,
 		"utime":     now,
 	}).Error
+}
 func (dao *UserGormDao) SelectByPhone(ctx context.Context, phone string) (User, error) {
 	var u User
 	err := dao.db.WithContext(ctx).Where("phone = ?", phone).First(&u).Error

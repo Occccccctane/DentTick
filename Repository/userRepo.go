@@ -40,6 +40,7 @@ func (repo *CachedUserRepository) FindById(ctx context.Context, id int64) (Domai
 func (repo *CachedUserRepository) UpdateProfile(ctx context.Context, u Domain.User) error {
 	// Domain -> Dao 映射
 	return repo.dao.UpdateProfile(ctx, repo.toEntity(u))
+}
 func (repo *CachedUserRepository) FindByPhone(ctx context.Context, phone string) (Domain.User, error) {
 	entity, err := repo.dao.SelectByPhone(ctx, phone)
 	if err != nil {
@@ -92,16 +93,5 @@ func (repo *CachedUserRepository) toDomain(u Dao.User) Domain.User {
 		DoctorId:  u.DoctorId,
 		PatientId: u.PatientId,
 		Phone:     u.Phone.String,
-// convert Dao.User to Domain.User
-func (repo *CachedUserRepository) toDomain(entity Dao.User) Domain.User {
-	return Domain.User{
-		Id:        entity.Id,
-		Name:      entity.Name,
-		Info:      entity.Info,
-		Password:  entity.Password,
-		Identity:  entity.Identity,
-		DoctorId:  entity.DoctorId,
-		PatientId: entity.PatientId,
-		Phone:     entity.Phone.String,
 	}
 }

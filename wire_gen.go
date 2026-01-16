@@ -20,14 +20,14 @@ import (
 // Injectors from wire.go:
 
 func InitWireServer() *gin.Engine {
-	v := Ioc.InitMiddlerWares()
+	cmdable := Ioc.InitRedis()
+	handler := Jwt.NewRedisJWTHandler(cmdable)
+	v := Ioc.InitMiddlerWares(handler)
 	logger := Ioc.InitLogger()
 	db := Ioc.InitDB(logger)
 	userDao := Dao.NewUserGormDao(db)
 	userRepository := Repository.NewUserRepository(userDao)
 	userService := Service.NewUserService(userRepository)
-	cmdable := Ioc.InitRedis()
-	handler := Jwt.NewRedisJWTHandler(cmdable)
 	userHandler := Handler.NewUserHandler(userService, handler, logger)
 	engine := Ioc.InitWebServer(v, userHandler)
 	return engine

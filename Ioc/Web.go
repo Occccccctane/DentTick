@@ -2,6 +2,7 @@ package Ioc
 
 import (
 	"DentTick/Handler"
+	ijwt "DentTick/Handler/Jwt"
 	"DentTick/Handler/MiddleWare"
 
 	"github.com/gin-gonic/gin"
@@ -14,12 +15,13 @@ func InitWebServer(middlewares []gin.HandlerFunc, userHandler *Handler.UserHandl
 	return server
 }
 
-func InitMiddlerWares() []gin.HandlerFunc {
+func InitMiddlerWares(hdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		//这里添加要过全局的中间件
 		//跨域
 		(&MiddleWare.CrossDomain{}).CrossDomainHandler(),
-		//	TODO：JWT验证
+		//	JWT 验证
+		MiddleWare.NewLoginJWTBuilder(hdl).CheckLogin(),
 		//	TODO: 限流
 	}
 }
