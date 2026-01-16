@@ -17,7 +17,9 @@ var (
 
 type UserService interface {
 	Signup(ctx context.Context, u Domain.User) error
+	// GetProfile 获取用户资料
 	GetProfile(ctx context.Context, id int64) (Domain.User, error)
+	// EditProfile 编辑用户资料
 	EditProfile(ctx context.Context, u Domain.User) error
 }
 type userService struct {
@@ -36,10 +38,12 @@ func (svc *userService) Signup(ctx context.Context, u Domain.User) error {
 }
 
 func (svc *userService) GetProfile(ctx context.Context, id int64) (Domain.User, error) {
+	// 直接透传到仓储层
 	return svc.userRepo.FindById(ctx, id)
 }
 
 func (svc *userService) EditProfile(ctx context.Context, u Domain.User) error {
+	// 只更新资料字段
 	return svc.userRepo.UpdateProfile(ctx, u)
 }
 

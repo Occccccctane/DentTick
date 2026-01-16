@@ -15,7 +15,9 @@ var (
 
 type UserRepository interface {
 	Create(ctx context.Context, u Domain.User) error
+	// FindById 查询用户
 	FindById(ctx context.Context, id int64) (Domain.User, error)
+	// UpdateProfile 更新用户资料
 	UpdateProfile(ctx context.Context, u Domain.User) error
 }
 
@@ -28,11 +30,13 @@ func (repo *CachedUserRepository) Create(ctx context.Context, u Domain.User) err
 }
 
 func (repo *CachedUserRepository) FindById(ctx context.Context, id int64) (Domain.User, error) {
+	// Dao -> Domain 映射
 	u, err := repo.dao.FindById(ctx, id)
 	return repo.toDomain(u), err
 }
 
 func (repo *CachedUserRepository) UpdateProfile(ctx context.Context, u Domain.User) error {
+	// Domain -> Dao 映射
 	return repo.dao.UpdateProfile(ctx, repo.toEntity(u))
 }
 
@@ -60,6 +64,7 @@ func (repo *CachedUserRepository) toEntity(u Domain.User) Dao.User {
 }
 
 func (repo *CachedUserRepository) toDomain(u Dao.User) Domain.User {
+	// 数据库实体转领域对象
 	return Domain.User{
 		Id:        u.Id,
 		Avatar:    u.Avatar,

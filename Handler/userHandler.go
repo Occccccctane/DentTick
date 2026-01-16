@@ -57,12 +57,14 @@ func (h *UserHandler) RegisterRoute(server *gin.Engine) {
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
+	// 从 JWT 中解析用户信息
 	uc, ok := h.extractUserClaims(ctx)
 	if !ok {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
+	// 查询用户资料
 	u, err := h.svc.GetProfile(ctx, uc.Uid)
 	if err != nil {
 		switch {
@@ -100,6 +102,7 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 }
 
 func (h *UserHandler) EditProfile(ctx *gin.Context) {
+	// 从 JWT 中解析用户信息
 	uc, ok := h.extractUserClaims(ctx)
 	if !ok {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
@@ -118,6 +121,7 @@ func (h *UserHandler) EditProfile(ctx *gin.Context) {
 		return
 	}
 
+	// 只允许编辑资料字段
 	err = h.svc.EditProfile(ctx, Domain.User{
 		Id:       uc.Uid,
 		Name:     req.Name,
@@ -139,6 +143,7 @@ func (h *UserHandler) EditProfile(ctx *gin.Context) {
 }
 
 func (h *UserHandler) extractUserClaims(ctx *gin.Context) (ijwt.UserClaims, bool) {
+	// 复用 Authorization 中的 JWT 解析用户信息
 	tokenStr := h.ExtractToken(ctx)
 	if tokenStr == "" {
 		return ijwt.UserClaims{}, false

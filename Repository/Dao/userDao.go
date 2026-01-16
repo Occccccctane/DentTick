@@ -17,7 +17,9 @@ var (
 
 type UserDao interface {
 	Insert(ctx context.Context, u User) error
+	// FindById 根据主键查询用户
 	FindById(ctx context.Context, id int64) (User, error)
+	// UpdateProfile 更新用户资料字段
 	UpdateProfile(ctx context.Context, u User) error
 }
 type UserGormDao struct {
@@ -44,11 +46,13 @@ func (dao *UserGormDao) Insert(ctx context.Context, u User) error {
 
 func (dao *UserGormDao) FindById(ctx context.Context, id int64) (User, error) {
 	var u User
+	// 只按主键查一条记录
 	err := dao.db.WithContext(ctx).First(&u, id).Error
 	return u, err
 }
 
 func (dao *UserGormDao) UpdateProfile(ctx context.Context, u User) error {
+	// 只更新资料字段，避免覆盖密码等敏感字段
 	now := time.Now().UnixMilli()
 	return dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", u.Id).Updates(map[string]any{
 		"name":      u.Name,
