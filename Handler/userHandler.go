@@ -155,7 +155,7 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 	type signUpReq struct {
 		Phone           string `json:"phone"`
 		Password        string `json:"password"`
-		ConfirmPassword string `json:"confirmPassword"`
+		ConfirmPassword string `json:"confirm_passwd"`
 	}
 
 	var req signUpReq
