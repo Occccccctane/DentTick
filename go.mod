@@ -6,7 +6,7 @@ toolchain go1.24.11
 
 require (
 	github.com/dlclark/regexp2 v1.11.5
-	github.com/gin-gonic/contrib v0.0.0-20250521004450-2b1292699c15
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
