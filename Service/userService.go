@@ -36,6 +36,7 @@ func (svc *userService) Signup(ctx context.Context, u Domain.User) error {
 
 	//没报错就将密码加密为哈希，将哈希存入数据库中
 	u.Password = string(hash)
+	//生成一个UUID作为医生ID/患者ID
 	return svc.userRepo.Create(ctx, u)
 }
 
@@ -48,8 +49,8 @@ func (svc *userService) EditProfile(ctx context.Context, u Domain.User) error {
 	// 只更新资料字段
 	return svc.userRepo.UpdateProfile(ctx, u)
 }
-func (svc *userService) Login(ctx context.Context, phone string, password string) (Domain.User, error) {
-	u, err := svc.userRepo.FindByPhone(ctx, phone)
+func (svc *userService) Login(ctx context.Context, phone string, password string) (u Domain.User, err error) {
+	u, err = svc.userRepo.FindByPhone(ctx, phone)
 	if err != nil {
 		return Domain.User{}, ErrInvalidUserOrPassword
 	}
@@ -57,7 +58,7 @@ func (svc *userService) Login(ctx context.Context, phone string, password string
 	if err != nil {
 		return Domain.User{}, ErrInvalidUserOrPassword
 	}
-	return u, nil
+	return
 }
 
 func (svc *userService) GetUser(ctx context.Context, uid int64) (Domain.User, error) {

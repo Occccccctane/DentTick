@@ -69,22 +69,6 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 
 	// 查询用户资料
 	u, err := h.svc.GetProfile(ctx, UC.Uid)
-	if err != nil {
-		switch {
-		case errors.Is(err, Service.ErrUserNotFound):
-			ctx.JSON(http.StatusOK, Result{
-				Code: 4,
-				Msg:  "user not found",
-			})
-		default:
-			ctx.JSON(http.StatusInternalServerError, Result{
-				Code: 5,
-				Msg:  "server error",
-			})
-		}
-		return
-	}
-
 	type profileResp struct {
 		Name     string `json:"name"`
 		NickName string `json:"nickname"`
@@ -92,16 +76,33 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 		Avatar   string `json:"avatar"`
 		Phone    string `json:"phone"`
 	}
-	ctx.JSON(http.StatusOK, Result{
-		Code: 2,
-		Data: profileResp{
-			Name:     u.Name,
-			NickName: u.NickName,
-			Info:     u.Info,
-			Avatar:   u.Avatar,
-			Phone:    u.Phone,
-		},
-	})
+	switch {
+	case err == nil:
+		ctx.JSON(http.StatusOK, Result{
+			Code: 2,
+			Data: profileResp{
+				Name:     u.Name,
+				NickName: u.NickName,
+				Info:     u.Info,
+				Avatar:   u.Avatar,
+				Phone:    u.Phone,
+			},
+		})
+		return
+	case errors.Is(err, Service.ErrUserNotFound):
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4,
+			Msg:  "user not found",
+		})
+		return
+	default:
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "server error",
+		})
+		return
+	}
+
 }
 
 func (h *UserHandler) EditProfile(ctx *gin.Context) {
@@ -156,6 +157,10 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 		Phone           string `json:"phone"`
 		Password        string `json:"password"`
 		ConfirmPassword string `json:"confirm_passwd"`
+		NickName        string `json:"nickname"`
+		Name            string `json:"name"`
+		Identity        int8   `json:"identity"`
+		Avatar          string `json:"avatar"`
 	}
 
 	var req signUpReq
@@ -178,6 +183,9 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 	err = h.svc.Signup(ctx, Domain.User{
 		Phone:    req.Phone,
 		Password: req.Password,
+		NickName: req.NickName,
+		Name:     req.Name,
+		Identity: req.Identity,
 	})
 	//错误处理
 	switch {
